@@ -91,7 +91,8 @@ void DynamicPrompt::updateSearchPrompt(void)
   update_screen_columns();
   UnicodeString const* basePrompt =
       (_direction > 0) ? &forwardSearchBasePrompt : &reverseSearchBasePrompt;
-  _text.assign(*basePrompt).append(_searchText).append(endSearchBasePrompt);
+  _text = *basePrompt;
+  _text.append(_searchText).append(endSearchBasePrompt);
   update_state();
 }
 

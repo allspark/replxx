@@ -133,7 +133,8 @@ Terminal::~Terminal(void)
 void Terminal::write32(char32_t const* text32, int len32)
 {
   _utf8.assign(text32, len32);
-  write8(_utf8.get(), _utf8.size());
+  std::string_view view{_utf8};
+  write8(view.data(), view.size());
   return;
 }
 

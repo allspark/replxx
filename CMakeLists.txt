@@ -8,11 +8,7 @@ project(
 )
 
 if (NOT DEFINED CMAKE_CXX_STANDARD)
-	set(CMAKE_CXX_STANDARD 11)
-endif()
-
-if (NOT DEFINED CMAKE_C_STANDARD)
-	set(CMAKE_C_STANDARD 99)
+	set(CMAKE_CXX_STANDARD 23)
 endif()
 
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
@@ -54,7 +50,7 @@ set(compiler-id-clang-or-gnu $<OR:${is-clang},${is-gnu}>)
 
 set(coverage-config $<AND:$<CONFIG:Coverage>,$<OR:${is-gnu},${is-clang}>>)
 
-set(replxx-source-patterns "src/*.cpp" "src/*.cxx")
+set(replxx-source-patterns "src/*.cpp" "src/*.cxx" "include/*.hxx")
 
 if (CMAKE_VERSION VERSION_GREATER 3.11)
 	list(INSERT replxx-source-patterns 0 CONFIGURE_DEPENDS)
@@ -167,33 +163,18 @@ install(
 
 if (REPLXX_BUILD_EXAMPLES)
 	add_executable(replxx-example-cxx-api "")
-	add_executable(replxx-example-c-api "")
 
 	target_sources(
 		replxx-example-cxx-api
 		PRIVATE
 			examples/cxx-api.cxx
-			examples/util.c
+			examples/util.cxx
+			examples/util.hxx
 	)
-	target_sources(
-		replxx-example-c-api
-		PRIVATE
-			examples/c-api.c
-			examples/util.c
-	)
+
 	target_compile_definitions(replxx-example-cxx-api PRIVATE REPLXX_STATIC $<$<CXX_COMPILER_ID:MSVC>:_CRT_SECURE_NO_WARNINGS=1>)
-	target_compile_definitions(replxx-example-c-api PRIVATE REPLXX_STATIC $<$<CXX_COMPILER_ID:MSVC>:_CRT_SECURE_NO_WARNINGS=1>)
 	target_link_options(replxx-example-cxx-api PRIVATE $<$<AND:$<CONFIG:Debug>,$<CXX_COMPILER_ID:GNU>>:-g -ggdb -g3 -ggdb3>)
-	target_link_options(replxx-example-c-api PRIVATE $<$<AND:$<CONFIG:Debug>,$<CXX_COMPILER_ID:GNU>>:-g -ggdb -g3 -ggdb3>)
 	target_link_libraries(replxx-example-cxx-api PRIVATE replxx::replxx)
-	target_link_libraries(
-		replxx-example-c-api
-		PRIVATE
-		replxx::replxx
-		$<${compiler-id-clang-or-gnu}:stdc++>
-		$<${is-clang}:m>
-		$<${coverage-config}:--coverage>
-	)
 	target_link_libraries(
 		replxx-example-cxx-api
 		PRIVATE

@@ -13,7 +13,7 @@
 #include <vector>
 
 #include "replxx.hxx"
-#include "util.h"
+#include "util.hxx"
 
 using Replxx = replxx::Replxx;
 using namespace replxx::color;
@@ -91,12 +91,12 @@ public:
 };
 
 // prototypes
-Replxx::completions_t hook_completion(std::string const& context, int& contextLen, std::vector<std::string> const& user_data, bool);
-Replxx::hints_t hook_hint(std::string const& context, int& contextLen, Replxx::Color& color, std::vector<std::string> const& user_data, bool);
+Replxx::completions_t hook_completion(std::string_view context, int& contextLen, std::vector<std::string> const& user_data, bool);
+Replxx::hints_t hook_hint(std::string_view context, int& contextLen, Replxx::Color& color, std::vector<std::string> const& user_data, bool);
 typedef std::vector<std::pair<std::string, Replxx::Color>> syntax_highlight_t;
 typedef std::unordered_map<std::string, Replxx::Color> keyword_highlight_t;
-void hook_color(std::string const& str, Replxx::colors_t& colors, syntax_highlight_t const&, keyword_highlight_t const&);
-void hook_modify(std::string& line, int& cursorPosition, Replxx*);
+void hook_color(std::string_view str, Replxx::colors_t& colors, syntax_highlight_t const&, keyword_highlight_t const&);
+void hook_modify(std::string& line, std::size_t& cursorPosition, Replxx*);
 
 bool eq(std::string const& l, std::string const& r, int s, bool ic)
 {
@@ -116,22 +116,22 @@ bool eq(std::string const& l, std::string const& r, int s, bool ic)
   return same;
 }
 
-Replxx::completions_t hook_completion(std::string const& context, int& contextLen, std::vector<std::string> const& examples, bool ignoreCase)
+Replxx::completions_t hook_completion(std::string_view context, int& contextLen, std::vector<std::string> const& examples, bool ignoreCase)
 {
   Replxx::completions_t completions;
-  int utf8ContextLen(context_len(context.c_str()));
+  int utf8ContextLen(context_len(context));
   int prefixLen(static_cast<int>(context.length()) - utf8ContextLen);
   if ((prefixLen > 0) && (context[prefixLen - 1] == '\\'))
   {
     --prefixLen;
     ++utf8ContextLen;
   }
-  contextLen = utf8str_codepoint_len(context.c_str() + prefixLen, utf8ContextLen);
+  contextLen = utf8str_codepoint_len(context.substr(prefixLen), utf8ContextLen);
 
   std::string prefix{context.substr(prefixLen)};
   if (prefix == "\\pi")
   {
-    completions.push_back("π");
+    completions.emplace_back("π");
   }
   else
   {
@@ -157,16 +157,16 @@ Replxx::completions_t hook_completion(std::string const& context, int& contextLe
   return completions;
 }
 
-Replxx::hints_t hook_hint(std::string const& context, int& contextLen, Replxx::Color& color, std::vector<std::string> const& examples, bool ignoreCase)
+Replxx::hints_t hook_hint(std::string_view context, int& contextLen, Replxx::Color& color, std::vector<std::string> const& examples, bool ignoreCase)
 {
   Replxx::hints_t hints;
 
   // only show hint if prefix is at least 'n' chars long
   // or if prefix begins with a specific character
 
-  int utf8ContextLen(context_len(context.c_str()));
+  int utf8ContextLen(context_len(context));
   int prefixLen(static_cast<int>(context.length()) - utf8ContextLen);
-  contextLen = utf8str_codepoint_len(context.c_str() + prefixLen, utf8ContextLen);
+  contextLen = utf8str_codepoint_len(context.substr(prefixLen), utf8ContextLen);
   std::string prefix{context.substr(prefixLen)};
 
   if (prefix.size() >= 2 || (!prefix.empty() && prefix.at(0) == '.'))
@@ -195,21 +195,21 @@ inline bool is_kw(char ch)
   return isalnum(ch) || (ch == '_');
 }
 
-void hook_color(std::string const& context, Replxx::colors_t& colors, syntax_highlight_t const& regex_color, keyword_highlight_t const& word_color)
+void hook_color(std::string_view context, Replxx::colors_t& colors, syntax_highlight_t const& regex_color, keyword_highlight_t const& word_color)
 {
   // highlight matching regex sequences
   for (auto const& e : regex_color)
   {
     size_t pos{0};
-    std::string str = context;
+    std::string str{context};
     std::smatch match;
 
     while (std::regex_search(str, match, std::regex(e.first)))
     {
       std::string c{match[0]};
       std::string prefix(match.prefix().str());
-      pos += utf8str_codepoint_len(prefix.c_str(), static_cast<int>(prefix.length()));
-      int len(utf8str_codepoint_len(c.c_str(), static_cast<int>(c.length())));
+      pos += utf8str_codepoint_len(prefix, static_cast<int>(prefix.length()));
+      int len(utf8str_codepoint_len(c, static_cast<int>(c.length())));
 
       for (int i = 0; i < len; ++i)
       {
@@ -294,7 +294,7 @@ void hook_color(std::string const& context, Replxx::colors_t& colors, syntax_hig
   }
 }
 
-void hook_modify(std::string& currentInput_, int&, Replxx* rx)
+void hook_modify(std::string& currentInput_, std::size_t&, Replxx* rx)
 {
   char prompt[64];
   snprintf(prompt, 64, "\x1b[1;32mreplxx\x1b[0m[%lu]> ", currentInput_.length());
@@ -667,7 +667,7 @@ int main(int argc_, char** argv_)
   for (;;)
   {
     // display the prompt and retrieve input from the user
-    char const* cinput{nullptr};
+    replxx::Utf8String const* cinput{nullptr};
 
     do
     {
@@ -681,7 +681,7 @@ int main(int argc_, char** argv_)
 
     // change cinput into a std::string
     // easier to manipulate
-    std::string input{cinput};
+    std::string_view input{*cinput};
 
     if (input.empty())
     {
@@ -720,7 +720,7 @@ int main(int argc_, char** argv_)
       }
       else
       {
-        prompt = input.substr(pos + 1) + " ";
+        prompt = std::string{input.substr(pos + 1)} + " ";
       }
 
       rx.history_add(input);
@@ -732,7 +732,7 @@ int main(int argc_, char** argv_)
       Replxx::HistoryScan hs(rx.history_scan());
       for (int i(0); hs.next(); ++i)
       {
-        std::cout << std::setw(4) << i << ": " << hs.get().text() << "\n";
+        std::cout << std::setw(4) << i << ": " << static_cast<std::string_view>(hs.get().text()) << "\n";
       }
 
       rx.history_add(input);
@@ -765,7 +765,7 @@ int main(int argc_, char** argv_)
       // default action
       // echo the input
 
-      rx.print("%s\n", input.c_str());
+      rx.print("%s\n", input.data());
 
       rx.history_add(input);
       continue;

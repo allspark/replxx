@@ -23,10 +23,6 @@ namespace replxx
 
 namespace
 {
-void delete_ReplxxHistoryScanImpl(Replxx::HistoryScanImpl* impl_)
-{
-  delete impl_;
-}
 static int const ETB = 0x17;
 }  // namespace
 
@@ -37,6 +33,8 @@ Replxx::HistoryScan::HistoryScan(impl_t impl_)
 {
 }
 
+Replxx::HistoryScan::~HistoryScan() = default;
+
 bool Replxx::HistoryScan::next(void)
 {
   return (_impl->next());
@@ -46,7 +44,7 @@ Replxx::HistoryScanImpl::HistoryScanImpl(History::entries_t const& entries_)
   : _entries(entries_)
   , _it(_entries.end())
   , _utf8Cache()
-  , _entryCache(std::string(), std::string())
+  , _entryCache()
   , _cacheValid(false)
 {
 }
@@ -76,15 +74,15 @@ Replxx::HistoryEntry const& Replxx::HistoryScanImpl::get(void) const
   {
     return (_entryCache);
   }
-  _utf8Cache.assign(_it->text());
-  _entryCache = Replxx::HistoryEntry(_it->timestamp(), _utf8Cache.get());
+  _utf8Cache = Utf8String{_it->text()};
+  _entryCache = Replxx::HistoryEntry(_it->timestamp(), _utf8Cache);
   _cacheValid = true;
   return (_entryCache);
 }
 
 Replxx::HistoryScan::impl_t History::scan(void) const
 {
-  return (Replxx::HistoryScan::impl_t(new Replxx::HistoryScanImpl(_entries), delete_ReplxxHistoryScanImpl));
+  return (Replxx::HistoryScan::impl_t(new Replxx::HistoryScanImpl(_entries)));
 }
 
 History::History(void)
@@ -196,11 +194,11 @@ void History::save(std::ostream& histFile)
     h.reset_scratch();
     if (!h.text().is_empty())
     {
-      us.assign(h.text());
+      us = h.text();
       std::replace(us.begin(), us.end(), char32_t('\n'), char32_t(ETB));
-      utf8.assign(us);
+      utf8 = Utf8String{us};
       histFile << "### " << h.timestamp() << "\n"
-               << utf8.get() << endl;
+               << std::string_view{utf8} << endl;
     }
   }
 }

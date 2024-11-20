@@ -496,8 +496,8 @@ void Replxx::ReplxxImpl::bind_key_internal(char32_t code_, char const* actionNam
 
 Replxx::State Replxx::ReplxxImpl::get_state(void) const
 {
-  _utf8Buffer.assign(_data);
-  return (Replxx::State(_utf8Buffer.get(), _pos));
+  _utf8Buffer = Utf8String{_data};
+  return (Replxx::State(_utf8Buffer, _pos));
 }
 
 void Replxx::ReplxxImpl::set_state(Replxx::State const& state_)
@@ -607,9 +607,9 @@ void Replxx::ReplxxImpl::call_modify_callback(void)
   {
     return;
   }
-  _utf8Buffer.assign(_data);
-  std::string origLine(_utf8Buffer.get());
-  int pos(_pos);
+  _utf8Buffer = Utf8String{_data};
+  std::string_view origLine(_utf8Buffer);
+  std::size_t pos(_pos);
   std::string line(origLine);
   /* IOModeGuard scope */ {
     IOModeGuard ioModeGuard(_terminal);
@@ -623,7 +623,7 @@ void Replxx::ReplxxImpl::call_modify_callback(void)
   }
 }
 
-Replxx::ReplxxImpl::completions_t Replxx::ReplxxImpl::call_completer(std::string const& input, int& contextLen_) const
+Replxx::ReplxxImpl::completions_t Replxx::ReplxxImpl::call_completer(Utf8String const& input, int& contextLen_) const
 {
   Replxx::completions_t completionsIntermediary(
       !!_completionCallback
@@ -638,7 +638,7 @@ Replxx::ReplxxImpl::completions_t Replxx::ReplxxImpl::call_completer(std::string
   return (completions);
 }
 
-Replxx::ReplxxImpl::hints_t Replxx::ReplxxImpl::call_hinter(std::string const& input, int& contextLen, Replxx::Color& color) const
+Replxx::ReplxxImpl::hints_t Replxx::ReplxxImpl::call_hinter(Utf8String const& input, int& contextLen, Replxx::Color& color) const
 {
   Replxx::hints_t hintsIntermediary(
       !!_hintCallback
@@ -711,7 +711,7 @@ void Replxx::ReplxxImpl::set_preload_buffer(std::string const& preloadText)
   }
 }
 
-char const* Replxx::ReplxxImpl::read_from_stdin(void)
+Utf8String const* Replxx::ReplxxImpl::read_from_stdin(void)
 {
   if (_preloadedBuffer.empty())
   {
@@ -727,7 +727,7 @@ char const* Replxx::ReplxxImpl::read_from_stdin(void)
   }
   _utf8Buffer.assign(_preloadedBuffer);
   _preloadedBuffer.clear();
-  return _utf8Buffer.get();
+  return &_utf8Buffer;
 }
 
 void Replxx::ReplxxImpl::emulate_key_press(char32_t keyCode_)
@@ -740,7 +740,7 @@ void Replxx::ReplxxImpl::emulate_key_press(char32_t keyCode_)
   }
 }
 
-char const* Replxx::ReplxxImpl::input(std::string const& prompt)
+Utf8String const* Replxx::ReplxxImpl::input(std::string const& prompt)
 {
   try
   {
@@ -780,19 +780,22 @@ char const* Replxx::ReplxxImpl::input(std::string const& prompt)
     }
     if (get_input_line() == -1)
     {
-      return (finalize_input(nullptr));
+      (finalize_input());
+      return nullptr;
     }
     _terminal.write8("\n", 1);
-    _utf8Buffer.assign(_data);
-    return (finalize_input(_utf8Buffer.get()));
+    _utf8Buffer = Utf8String{_data};
+    finalize_input();
+    return &_utf8Buffer;
   }
   catch (std::exception const&)
   {
-    return (finalize_input(nullptr));
+    finalize_input();
+    return nullptr;
   }
 }
 
-char const* Replxx::ReplxxImpl::finalize_input(char const* retVal_)
+void Replxx::ReplxxImpl::finalize_input()
 {
   std::unique_lock<std::mutex> l(_mutex);
   while (!_messages.empty())
@@ -805,7 +808,6 @@ char const* Replxx::ReplxxImpl::finalize_input(char const* retVal_)
   }
   _currentThread = std::thread::id();
   _terminal.disable_raw_mode();
-  return (retVal_);
 }
 
 int Replxx::ReplxxImpl::install_window_change_handler(void)
@@ -950,11 +952,11 @@ void Replxx::ReplxxImpl::render(HINT_ACTION hintAction_)
     return;
   }
   Replxx::colors_t colors(_data.length(), Replxx::Color::DEFAULT);
-  _utf8Buffer.assign(_data);
+  _utf8Buffer = Utf8String{_data};
   if (!!_highlighterCallback)
   {
     IOModeGuard ioModeGuard(_terminal);
-    _highlighterCallback(_utf8Buffer.get(), colors);
+    _highlighterCallback(_utf8Buffer, colors);
   }
   paren_info_t pi(matching_paren());
   Replxx::Color ERROR(Replxx::Color::RED | color::bg(Replxx::Color::BRIGHTRED));
@@ -1013,7 +1015,7 @@ void Replxx::ReplxxImpl::handle_hints(HINT_ACTION hintAction_)
     _hintContextLenght = context_length();
     _hintColor = Replxx::Color::GRAY;
     IOModeGuard ioModeGuard(_terminal);
-    _hintsCache = call_hinter(_utf8Buffer.get(), _hintContextLenght, _hintColor);
+    _hintsCache = call_hinter(_utf8Buffer, _hintContextLenght, _hintColor);
   }
   int hintCount(static_cast<int>(_hintsCache.size()));
   if (hintCount == 1)
@@ -1376,7 +1378,7 @@ char32_t Replxx::ReplxxImpl::do_complete_line(bool showCompletions_)
   _completionContextLength = context_length();
   /* IOModeGuard scope */ {
     IOModeGuard ioModeGuard(_terminal);
-    _completions = call_completer(_utf8Buffer.get(), _completionContextLength);
+    _completions = call_completer(_utf8Buffer, _completionContextLength);
   }
 
   // if no completions, we are done
@@ -2381,7 +2383,7 @@ Replxx::ACTION_RESULT Replxx::ReplxxImpl::history_move(bool previous_)
   {
     return (Replxx::ACTION_RESULT::CONTINUE);
   }
-  _data.assign(_history.current());
+  _data = _history.current();
   _pos = _data.length();
   refresh_line();
   return (Replxx::ACTION_RESULT::CONTINUE);
@@ -2434,7 +2436,7 @@ Replxx::ACTION_RESULT Replxx::ReplxxImpl::history_restore_current(char32_t)
   if (!_history.is_last())
   {
     _history.reset_current_scratch();
-    _data.assign(_history.current());
+    _data = _history.current();
     _pos = _data.length();
     refresh_line();
   }
@@ -2448,7 +2450,7 @@ Replxx::ACTION_RESULT Replxx::ReplxxImpl::history_restore(char32_t)
   // if not already recalling, there is nothing to restore.
   if (!_history.is_last())
   {
-    _data.assign(_history.current());
+    _data = _history.current();
     _pos = _data.length();
     refresh_line();
   }
@@ -2468,7 +2470,7 @@ Replxx::ACTION_RESULT Replxx::ReplxxImpl::history_jump(bool back_)
   {
     _history.set_current_scratch(_data);
     _history.jump(back_);
-    _data.assign(_history.current());
+    _data = _history.current();
     _pos = _data.length();
     refresh_line();
   }
@@ -2579,13 +2581,13 @@ Replxx::ACTION_RESULT Replxx::ReplxxImpl::complete(bool previous_)
   }
   if (_completionSelection != -1)
   {
-    int oldCompletionLength(max(_completions[_completionSelection].text().length() - _completionContextLength, 0));
+    int oldCompletionLength(max(_completions[_completionSelection].text().length() - _completionContextLength, std::size_t{0}));
     _pos -= oldCompletionLength;
     _data.erase(_pos, oldCompletionLength);
   }
   if (newSelection != -1)
   {
-    int newCompletionLength(max(_completions[newSelection].text().length() - _completionContextLength, 0));
+    int newCompletionLength(max(_completions[newSelection].text().length() - _completionContextLength, std::size_t{0}));
     _data.insert(_pos, _completions[newSelection].text(), _completionContextLength, newCompletionLength);
     _pos += newCompletionLength;
   }
@@ -2614,7 +2616,7 @@ Replxx::ACTION_RESULT Replxx::ReplxxImpl::common_prefix_search(char32_t startCha
       _history.common_prefix_search(
           _data, _prefix, (startChar == (Replxx::KEY::meta('p'))) || (startChar == (Replxx::KEY::meta('P'))), _ignoreCase))
   {
-    _data.assign(_history.current());
+    _data = _history.current();
     _pos = _data.length();
     refresh_line();
   }
@@ -2645,7 +2647,7 @@ Replxx::ACTION_RESULT Replxx::ReplxxImpl::incremental_history_search(char32_t st
   DynamicPrompt dp(_terminal, (startChar == Replxx::KEY::control('R')) || seeded ? -1 : 1);
   if (seeded)
   {
-    dp._searchText.assign(_data);
+    dp._searchText = _data;
     dp.updateSearchPrompt();
   }
 
@@ -2808,7 +2810,7 @@ Replxx::ACTION_RESULT Replxx::ReplxxImpl::incremental_history_search(char32_t st
     {
       break;
     }
-    activeHistoryLine.assign(_history.current());
+    activeHistoryLine = _history.current();
     if (dp._searchText.length() > 0)
     {
       bool found = false;
@@ -2851,7 +2853,7 @@ Replxx::ACTION_RESULT Replxx::ReplxxImpl::incremental_history_search(char32_t st
         }
         else if (_history.move(dp._direction < 0))
         {
-          activeHistoryLine.assign(_history.current());
+          activeHistoryLine = _history.current();
           lineSearchPos = (dp._direction > 0) ? 0 : (activeHistoryLine.length() - dp._searchText.length());
         }
         else
@@ -2871,7 +2873,7 @@ Replxx::ACTION_RESULT Replxx::ReplxxImpl::incremental_history_search(char32_t st
       _history.restore_pos();
       historyLinePosition = _pos;
     }
-    activeHistoryLine.assign(_history.current());
+    activeHistoryLine = _history.current();
     dynamic_refresh(dp, dp, activeHistoryLine.get(), activeHistoryLine.length(), historyLinePosition);  // draw user's text with our prompt
     seeded = false;
   }  // while
@@ -2885,7 +2887,7 @@ Replxx::ACTION_RESULT Replxx::ReplxxImpl::incremental_history_search(char32_t st
   if (useSearchedLine && (activeHistoryLine.length() > 0))
   {
     _history.commit_index();
-    _data.assign(activeHistoryLine);
+    _data = activeHistoryLine;
     _pos = historyLinePosition;
     _modifiedState = true;
   }

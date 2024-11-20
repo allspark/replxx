@@ -177,7 +177,7 @@ public:
   void set_completion_callback(Replxx::completion_callback_t const& fn);
   void set_highlighter_callback(Replxx::highlighter_callback_t const& fn);
   void set_hint_callback(Replxx::hint_callback_t const& fn);
-  char const* input(std::string const& prompt);
+  Utf8String const* input(std::string const& prompt);
   void history_add(std::string const& line);
   bool history_sync(std::string const& filename);
   bool history_save(std::string const& filename);
@@ -281,11 +281,11 @@ private:
   Replxx::ACTION_RESULT common_prefix_search(char32_t startChar);
   Replxx::ACTION_RESULT bracketed_paste(char32_t startChar);
   char32_t read_char(HINT_ACTION = HINT_ACTION::SKIP);
-  char const* read_from_stdin(void);
+  Utf8String const* read_from_stdin(void);
   char32_t do_complete_line(bool);
   void call_modify_callback(void);
-  completions_t call_completer(std::string const& input, int&) const;
-  hints_t call_hinter(std::string const& input, int&, Replxx::Color& color) const;
+  completions_t call_completer(Utf8String const& input, int&) const;
+  hints_t call_hinter(Utf8String const& input, int&, Replxx::Color& color) const;
   void refresh_line(HINT_ACTION = HINT_ACTION::REGENERATE);
   void move_cursor(void);
   void indent(void);
@@ -303,7 +303,7 @@ private:
   template <bool subword>
   bool is_word_break_character(char32_t) const;
   void dynamic_refresh(Prompt& oldPrompt, Prompt& newPrompt, char32_t* buf32, int len, int pos);
-  char const* finalize_input(char const*);
+  void finalize_input();
   void clear_self_to_end_of_screen(Prompt const* = nullptr);
   typedef struct
   {

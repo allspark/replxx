@@ -31,10 +31,12 @@
 #ifndef HAVE_REPLXX_HXX_INCLUDED
 #define HAVE_REPLXX_HXX_INCLUDED 1
 
+#include <filesystem>
 #include <functional>
 #include <iosfwd>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 /*
@@ -89,8 +91,11 @@ enum
 };
 #endif
 
+#include "utf8string.hxx"
+
 namespace replxx
 {
+class Utf8String;
 
 class REPLXX_IMPEXP Replxx
 {
@@ -246,63 +251,59 @@ public:
     RETURN,   /*!< Return user input entered so far. */
     BAIL      /*!< Stop processing user input, returns nullptr from the \e input() call. */
   };
-  typedef std::vector<Color> colors_t;
+  using colors_t = std::vector<Color>;
   class Completion
   {
     std::string _text;
     Color _color;
 
   public:
-    Completion(char const* text_)
-      : _text(text_)
+    explicit Completion(std::string text_)
+      : _text(std::move(text_))
       , _color(Color::DEFAULT)
     {
     }
-    Completion(std::string const& text_)
-      : _text(text_)
-      , _color(Color::DEFAULT)
-    {
-    }
-    Completion(std::string const& text_, Color color_)
-      : _text(text_)
+    Completion(std::string text_, Color color_)
+      : _text(std::move(text_))
       , _color(color_)
     {
     }
-    std::string const& text(void) const
+    std::string const& text() const
     {
       return (_text);
     }
-    Color color(void) const
+    Color color() const
     {
       return (_color);
     }
   };
-  typedef std::vector<Completion> completions_t;
+  using completions_t = std::vector<Completion>;
   class HistoryEntry
   {
     std::string _timestamp;
-    std::string _text;
+    Utf8String _text;
 
   public:
-    HistoryEntry(std::string const& timestamp_, std::string const& text_)
-      : _timestamp(timestamp_)
-      , _text(text_)
+    HistoryEntry() = default;
+    HistoryEntry(std::string timestamp_, Utf8String text_)
+      : _timestamp(std::move(timestamp_))
+      , _text(std::move(text_))
     {
     }
-    std::string const& timestamp(void) const
+    std::string const& timestamp() const
     {
-      return (_timestamp);
+      return _timestamp;
     }
-    std::string const& text(void) const
+    Utf8String const& text() const
     {
-      return (_text);
+      return _text;
     }
   };
   class HistoryScanImpl;
   class HistoryScan
   {
   public:
-    typedef std::unique_ptr<HistoryScanImpl, void (*)(HistoryScanImpl*)> impl_t;
+    using impl_t = std::unique_ptr<HistoryScanImpl>;
 
   private:
 #ifdef _MSC_VER
@@ -317,14 +318,11 @@ public:
     HistoryScan(impl_t);
     HistoryScan(HistoryScan&&) = default;
     HistoryScan& operator=(HistoryScan&&) = default;
-    bool next(void);
-    HistoryEntry const& get(void) const;
-
-  private:
-    HistoryScan(HistoryScan const&) = delete;
-    HistoryScan& operator=(HistoryScan const&) = delete;
+    ~HistoryScan();
+    bool next();
+    HistoryEntry const& get() const;
   };
-  typedef std::vector<std::string> hints_t;
+  using hints_t = std::vector<std::string>;
 
   /*! \brief Line modification callback type definition.
    *
@@ -338,7 +336,7 @@ public:
    * \param line[in,out] - a R/W reference to an UTF-8 encoded input entered by the user so far.
    * \param cursorPosition[in,out] - a R/W reference to current cursor position.
    */
-  typedef std::function<void(std::string& line, int& cursorPosition)> modify_callback_t;
+  using modify_callback_t = std::function<void(std::string& line, std::size_t& cursorPosition)>;
 
   /*! \brief Completions callback type definition.
    *
@@ -358,7 +356,7 @@ public:
    * \param[in,out] contextLen - length of the additional context to provide while displaying completions.
    * \return A list of user completions.
    */
-  typedef std::function<completions_t(std::string const& input, int& contextLen)> completion_callback_t;
+  using completion_callback_t = std::function<completions_t(std::string_view input, int& contextLen)>;
 
   /*! \brief Highlighter callback type definition.
    *
@@ -373,7 +371,7 @@ public:
    * \param input - an UTF-8 encoded input entered by the user so far.
    * \param colors - output buffer for color information.
    */
-  typedef std::function<void(std::string const& input, colors_t& colors)> highlighter_callback_t;
+  using highlighter_callback_t = std::function<void(std::string_view input, colors_t& colors)>;
 
   /*! \brief Hints callback type definition.
    *
@@ -394,40 +392,40 @@ public:
    * \param color - a color used for displaying hints.
    * \return A list of possible hints.
    */
-  typedef std::function<hints_t(std::string const& input, int& contextLen, Color& color)> hint_callback_t;
+  using hint_callback_t = std::function<hints_t(std::string_view input, int& contextLen, Color& color)>;
 
   /*! \brief Key press handler type definition.
    *
    * \param code - the key code replxx got from terminal.
    * \return Decision on how should input() behave after this key handler returns.
    */
-  typedef std::function<ACTION_RESULT(char32_t code)> key_press_handler_t;
+  using key_press_handler_t = std::function<ACTION_RESULT(char32_t code)>;
 
   struct State
   {
-    char const* _text;
-    int _cursorPosition;
-    State(char const* text_, int cursorPosition_ = -1)
+    std::string_view _text;
+    std::size_t _cursorPosition;
+    explicit State(std::string_view text_, int cursorPosition_)
       : _text(text_)
       , _cursorPosition(cursorPosition_)
     {
     }
     State(State const&) = default;
     State& operator=(State const&) = default;
-    char const* text(void) const
+    std::string_view text() const
     {
-      return (_text);
+      return _text;
     }
-    int cursor_position(void) const
+    std::size_t cursor_position() const
     {
-      return (_cursorPosition);
+      return _cursorPosition;
     }
   };
 
   class ReplxxImpl;
 
 private:
-  typedef std::unique_ptr<ReplxxImpl, void (*)(ReplxxImpl*)> impl_t;
+  using impl_t = std::unique_ptr<ReplxxImpl>;
 #ifdef _MSC_VER
 #  pragma warning(push)
 #  pragma warning(disable : 4251)
@@ -438,33 +436,34 @@ private:
 #endif
 
 public:
-  Replxx(void);
-  Replxx(Replxx&&) = default;
-  Replxx& operator=(Replxx&&) = default;
+  Replxx();
+  Replxx(Replxx&&) = delete;
+  Replxx& operator=(Replxx&&) = delete;
+  ~Replxx();
 
   /*! \brief Register modify callback.
    *
    * \param fn - user defined callback function.
    */
-  void set_modify_callback(modify_callback_t const& fn);
+  void set_modify_callback(modify_callback_t);
 
   /*! \brief Register completion callback.
    *
    * \param fn - user defined callback function.
    */
-  void set_completion_callback(completion_callback_t const& fn);
+  void set_completion_callback(completion_callback_t);
 
   /*! \brief Register highlighter callback.
    *
    * \param fn - user defined callback function.
    */
-  void set_highlighter_callback(highlighter_callback_t const& fn);
+  void set_highlighter_callback(highlighter_callback_t);
 
   /*! \brief Register hints callback.
    *
    * \param fn - user defined callback function.
    */
-  void set_hint_callback(hint_callback_t const& fn);
+  void set_hint_callback(hint_callback_t);
 
   /*! \brief Read line of user input.
    *
@@ -473,7 +472,7 @@ public:
    * \param prompt - prompt to be displayed before getting user input.
    * \return An UTF-8 encoded input given by the user (or nullptr on EOF).
    */
-  char const* input(std::string const& prompt);
+  Utf8String const* input(std::string_view prompt);
 
   /*! \brief Get current state data.
    *
@@ -481,7 +480,7 @@ public:
    *
    * \return Current state of the model.
    */
-  State get_state(void) const;
+  State get_state() const;
 
   /*! \brief Set new state data.
    *
@@ -505,7 +504,7 @@ public:
    *
    * \param fmt - printf style format.
    */
-  void print(char const* fmt, ...);
+  void print(char const* fmt, ...);  // FIXME use fmt
 
   /*! \brief Prints a char array with the given length to standard output.
    *
@@ -514,7 +513,7 @@ public:
    * \param str - The char array to print.
    * \param length - The length of the array.
    */
-  void write(char const* str, int length);
+  void write(std::string_view);
 
   /*! \brief Asynchronously change the prompt while replxx_input() call is in efect.
    *
@@ -545,7 +544,7 @@ public:
    * \param code - handle this key-press event with following handler.
    * \param handle - use this handler to handle key-press event.
    */
-  void bind_key(char32_t code, key_press_handler_t handler);
+  void bind_key(char32_t code, key_press_handler_t);
 
   /*! \brief Bind internal `replxx` action (by name) to handle given key-press event.
    *
@@ -557,9 +556,9 @@ public:
    * \param code - handle this key-press event with following handler.
    * \param actionName - name of internal action to be invoked on key press.
    */
-  void bind_key_internal(char32_t code, char const* actionName);
+  void bind_key_internal(char32_t code, std::string_view actionName);
 
-  void history_add(std::string const& line);
+  void history_add(std::string_view);
 
   /*! \brief Synchronize REPL's history with given file.
    *
@@ -575,7 +574,7 @@ public:
    * \param filename - a path to the file with which REPL's current history should be synchronized.
    * \return True iff history file was successfully created.
    */
-  bool history_sync(std::string const& filename);
+  bool history_sync(std::filesystem::path const& filename);
 
   /*! \brief Save REPL's history into given file.
    *
@@ -587,7 +586,7 @@ public:
    * \param filename - a path to the file where REPL's history should be saved.
    * \return True iff history file was successfully created.
    */
-  bool history_save(std::string const& filename);
+  bool history_save(std::filesystem::path const& filename);
 
   /*!
    * \copydoc history_save
@@ -599,7 +598,7 @@ public:
    * \param filename - a path to the file which contains REPL's history that should be loaded.
    * \return True iff history file was successfully opened.
    */
-  bool history_load(std::string const& filename);
+  bool history_load(std::filesystem::path const& filename);
 
   /*!
    * \copydoc history_load
@@ -608,11 +607,11 @@ public:
 
   /*! \brief Clear REPL's in-memory history.
    */
-  void history_clear(void);
-  int history_size(void) const;
-  HistoryScan history_scan(void) const;
+  void history_clear();
+  std::size_t history_size() const;
+  HistoryScan history_scan() const;
 
-  void set_preload_buffer(std::string const& preloadText);
+  void set_preload_buffer(std::string preloadText);
 
   /*! \brief Set set of word break characters.
    *
@@ -620,7 +619,7 @@ public:
    *
    * \param wordBreakers - 7-bit ASCII set of word breaking characters.
    */
-  void set_word_break_characters(char const* wordBreakers);
+  void set_word_break_characters(std::string_view wordBreakers);
 
   /*! \brief How many completions should trigger pagination.
    */
@@ -686,14 +685,10 @@ public:
   /*! \brief Set maximum number of entries in history list.
    */
   void set_max_history_size(int len);
-  void clear_screen(void);
-  int install_window_change_handler(void);
-  void enable_bracketed_paste(void);
-  void disable_bracketed_paste(void);
-
-private:
-  Replxx(Replxx const&) = delete;
-  Replxx& operator=(Replxx const&) = delete;
+  void clear_screen();
+  int install_window_change_handler();
+  void enable_bracketed_paste();
+  void disable_bracketed_paste();
 };
 
 /*! \brief Color definition related helper function.
@@ -755,3 +750,4 @@ Replxx::Color rgb666(int red, int green, int blue);
 }  // namespace replxx
 
 #endif /* HAVE_REPLXX_HXX_INCLUDED */
+
