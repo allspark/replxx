@@ -1,9 +1,11 @@
 #ifndef REPLXX_ESCAPE_HXX_INCLUDED
 #define REPLXX_ESCAPE_HXX_INCLUDED 1
 
-namespace replxx {
+namespace replxx
+{
 
-namespace EscapeSequenceProcessing {
+namespace EscapeSequenceProcessing
+{
 
 // This is a typedef for the routine called by doDispatch().	It takes the
 // current character
@@ -21,17 +23,17 @@ typedef char32_t (*CharacterDispatchRoutine)(char32_t);
 // longer than the character list; the final entry is used if no character
 // matches.
 //
-struct CharacterDispatch {
-	unsigned int len;                   // length of the chars list
-	const char* chars;                  // chars to test
-	CharacterDispatchRoutine* dispatch; // array of routines to call
+struct CharacterDispatch
+{
+  unsigned int len;                    // length of the chars list
+  char const* chars;                   // chars to test
+  CharacterDispatchRoutine* dispatch;  // array of routines to call
 };
 
 char32_t doDispatch(char32_t c);
 
-}
+}  // namespace EscapeSequenceProcessing
 
-}
+}  // namespace replxx
 
 #endif
-
