@@ -11,11 +11,13 @@
 #endif
 
 #include "utf8string.hxx"
+#include "escape.hxx"
 
 namespace replxx
 {
 
 class Terminal
+  : public replxx::EscapeSequenceProcessing::EscapeSequenceProcessingCallback
 {
 public:
   enum class EVENT_TYPE
@@ -78,8 +80,8 @@ public:
   int install_window_change_handler(void);
 #endif
 
-  void beep();
-  char32_t read_unicode_character();
+  void beep() override;
+  char32_t read_unicode_character() override;
 private:
   void enable_out(void);
   void disable_out(void);

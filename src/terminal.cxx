@@ -634,7 +634,7 @@ char32_t Terminal::read_char(void)
   }
 #  endif  // __REPLXX_DEBUG__
 
-  c = EscapeSequenceProcessing::doDispatch(c);
+  c = EscapeSequenceProcessing::doDispatch(*this, c);
   if (is_control_code(c))
   {
     c = Replxx::KEY::control(control_to_human(c));

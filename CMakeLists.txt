@@ -190,6 +190,19 @@ if (REPLXX_BUILD_EXAMPLES)
     )
 endif ()
 
+if (BUILD_TESTING)
+    find_package(GTest REQUIRED)
+    add_executable(replxx-unittests)
+
+    target_compile_definitions(replxx-unittests PRIVATE cxx_std_23)
+    target_link_libraries(replxx-unittests PRIVATE replxx::replxx GTest::gtest GTest::gtest_main GTest::gmock)
+
+    target_include_directories(replxx-unittests PRIVATE src)
+
+    target_sources(replxx-unittests PRIVATE
+            src/escape_tests.cxx
+    )
+endif ()
 
 if (NOT REPLXX_BUILD_PACKAGE)
     return()
