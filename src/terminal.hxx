@@ -77,6 +77,9 @@ public:
   int read_verbatim(char32_t*, int);
   int install_window_change_handler(void);
 #endif
+
+  void beep();
+  char32_t read_unicode_character();
 private:
   void enable_out(void);
   void disable_out(void);
@@ -87,9 +90,6 @@ private:
   Terminal(Terminal&&) = delete;
   Terminal& operator=(Terminal&&) = delete;
 };
-
-void beep();
-char32_t read_unicode_character(void);
 
 namespace tty
 {

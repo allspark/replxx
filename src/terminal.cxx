@@ -335,7 +335,7 @@ void Terminal::disable_raw_mode(void)
  *
  * @return char32_t Unicode character
  */
-char32_t read_unicode_character(void)
+char32_t Terminal::read_unicode_character(void)
 {
   static char8_t utf8String[5];
   static size_t utf8Count = 0;
@@ -379,7 +379,7 @@ char32_t read_unicode_character(void)
 
 #endif  // #ifndef _WIN32
 
-void beep()
+void Terminal::beep()
 {
   fprintf(stderr, "\x7");  // ctrl-G == bell/beep
   fflush(stderr);

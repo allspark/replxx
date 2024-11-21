@@ -1384,7 +1384,7 @@ char32_t Replxx::ReplxxImpl::do_complete_line(bool showCompletions_)
   // if no completions, we are done
   if (_completions.empty())
   {
-    beep();
+    _terminal.beep();
     return 0;
   }
 
@@ -1411,7 +1411,7 @@ char32_t Replxx::ReplxxImpl::do_complete_line(bool showCompletions_)
   }
   if (_beepOnAmbiguousCompletion && (completionsCount != 1))
   {  // beep if ambiguous
-    beep();
+    _terminal.beep();
   }
 
   // if we can extend the item, extend it and return to main loop
@@ -1544,7 +1544,7 @@ char32_t Replxx::ReplxxImpl::do_complete_line(bool showCompletions_)
         {
           if (doBeep)
           {
-            beep();
+            _terminal.beep();
           }
           doBeep = true;
           do
@@ -1768,7 +1768,7 @@ Replxx::ACTION_RESULT Replxx::ReplxxImpl::insert_character(char32_t c)
    */
   if ((c >= static_cast<int>(Replxx::KEY::BASE)) || (is_control_code(c) && (c != '\n')))
   {
-    beep();
+    _terminal.beep();
     return (Replxx::ACTION_RESULT::CONTINUE);
   }
   if (!_overwrite || (_pos >= _data.length()))
@@ -2025,7 +2025,7 @@ Replxx::ACTION_RESULT Replxx::ReplxxImpl::yank(char32_t)
   }
   else
   {
-    beep();
+    _terminal.beep();
   }
   return (Replxx::ACTION_RESULT::CONTINUE);
 }
@@ -2035,13 +2035,13 @@ Replxx::ACTION_RESULT Replxx::ReplxxImpl::yank_cycle(char32_t)
 {
   if (_killRing.lastAction != KillRing::actionYank)
   {
-    beep();
+    _terminal.beep();
     return (Replxx::ACTION_RESULT::CONTINUE);
   }
   UnicodeString* restoredText = _killRing.yankPop();
   if (!restoredText)
   {
-    beep();
+    _terminal.beep();
     return (Replxx::ACTION_RESULT::CONTINUE);
   }
   _pos -= _lastYankSize;
@@ -2781,7 +2781,7 @@ Replxx::ACTION_RESULT Replxx::ReplxxImpl::incremental_history_search(char32_t st
         }
         else
         {
-          beep();
+          _terminal.beep();
         }
       }
       break;
@@ -2800,7 +2800,7 @@ Replxx::ACTION_RESULT Replxx::ReplxxImpl::incremental_history_search(char32_t st
         }
         else
         {
-          beep();
+          _terminal.beep();
         }
       }
     }  // switch
@@ -2859,7 +2859,7 @@ Replxx::ACTION_RESULT Replxx::ReplxxImpl::incremental_history_search(char32_t st
         else
         {
           historyLinePosition = _pos;
-          beep();
+          _terminal.beep();
           break;
         }
       }  // while
